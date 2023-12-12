@@ -44,9 +44,10 @@ function _creation_log(){
     _file="$HOME/user_creation.log"
     _login=$1
     _password=$( echo "$2" | md5sum )
+    _message=$3
 
     touch $_file
-    echo "$_login;$_password;`date`" >> $_file
+    echo "$_login;$_password;$_message;`date`" >> $_file
     
 }
 
@@ -64,11 +65,12 @@ function main(){  # Executa a criação dos usuários.
 
         if [[ $_is_valid -eq 1 ]]; then
             echo "Usuário $_login já existe cadastrado."
+            _creation_log $_login $_password "Usuário já existe no sistema."
         else
             echo "Criando o usuário: $_login"
             echo "$_home | $_group | $_password | $_name"
             sudo useradd -m -d "$_home" -G $_group -p $_password -c "$_name" $_login
-            _creation_log $_login $_password
+            _creation_log $_login $_password "Criado com sucesso."
         fi
    done < $_file
 }
