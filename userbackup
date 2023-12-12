@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Disco alvo do backup, mudar no caso de ser outro o seu device.
+DISK='/dev/sda1'
+# Diretório de backup.
+DIR='/backup'
+
+function _mount_backup_disk(){  # Monta a partição para o backup.
+    echo "Montando a partição de backup."
+    _sd=$1
+    _bkp=$2
+    sudo mount $_sd $_bkp
+    echo "Partição $_sd montada com sucesso em $_bkp."
+}
+
+function _umount_backup_disk(){  # Desmonta a partução para o backup.
+    echo "Desmontando a partição de backup."
+    _bkp=$1
+    sudo umount $_bkp
+    echo "Partição $_bkp desmontada."
+}
+
+function _compress_and_save_home(){  # Comprime e salva o backup do diretório home.
+    echo "Comprimindo o diretório home."
+    _bkp=$1
+    _file=backup_$(date +"%F_%R").tar.gz
+    sudo tar -czvf /$_bkp/$_file /home
+    echo "Arquivo $_file comprimido no diretório $_bkp."
+}
+
+function main(){  # Função main do programa.
+    echo "Iniciando o processo de backup."
+    _dsk=$1
+    _bkp=$2
+
+    _mount_backup_disk $_dsk $_bkp
+    _compress_and_save_home $_bkp
+    _umount_backup_disk $_bkp
+
+    echo "Backup finalizado."
+}
+
+main $DISK $DIR
