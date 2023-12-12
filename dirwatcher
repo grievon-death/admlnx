@@ -28,7 +28,7 @@ function _check_removeds_(){
     _list=$2
 
     x=$( cut $_ad_file -d' ' -f2 )
-    _files=$( cut $x -d; -f1 )
+    _files=$( cut $x -d\; -f1 )
 
     while read _file;do
         _exist=$( echo $_list | grep $_file)
@@ -54,14 +54,15 @@ function main(){
     _ad_file="$_dir/auditoria.csv"
     _rp_file="$_dir/relatório.csv"
     _date=$( date +"%F %R" )
-    _list=$(ls -la $_dir)
+    _list=$(ls $_dir)
 
     _file_exists_ $_ad_file
 
-    while read _line; do
-        _content=$( cat $_ad_file | grep $_line )
+    for _line in $_list; do
+        _content=$( cat $_ad_file | grep "$_line" )
+        echo "Linha $_content"
 
-        if [ ! $_content ];then
+        if [ ! "$_content" ];then
             _data="$( md5sum "$_dir/$_line") - $_date"
             echo $_data >> $_ad_file
             _report_ $_rp_file $_data
@@ -81,10 +82,9 @@ function main(){
                 echo "CHANGED $_line"
             fi
         fi
-    done < $_list
+    done
 
-    _check_removeds_ $_audit_file $_list
-
+    _check_removeds_ "$_dir/$_audit_file" $_list
 }
 
 if [ ! $1 -o $1 == "--help" ]; then
