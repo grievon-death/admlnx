@@ -12,79 +12,99 @@ function _help(){
     "
 }
 
-function _file_exists_(){
+function __file_exists__(){
     _path=$1
 
     if  [ -e $_path ]; then
         echo "File $_path: Ok"
     else
-        echo "token file - date" > $_path
         echo "Created file $_path"
     fi
 }
 
-function _check_removeds_(){
+function __check_removeds__(){
     _ad_file=$1
     _list=$2
+    _files=$( cut $_ad_file -d\- -f2 )
 
-    x=$( cut $_ad_file -d' ' -f2 )
-    _files=$( cut $x -d\; -f1 )
-
-    while read _file;do
+    for _file in $( echo $_files | cut -d' ' -f2);do
         _exist=$( echo $_list | grep $_file)
 
-        if [ ! $_exist ];then
+        if [ $_exist ];then
             sed -i "/$_files/d" $_ad_file
             echo "REMOVED $_file"
         fi
-    done < $_files
+    done
 
 }
 
-function _report_(){
-    _file=$1
+function __report__(){
+    _path=$1
     _data=$2
 
-    _file_exists_ $_file
-    echo $_data >> $_file
+    __file_exists__ $_path
+    echo $_data >> $_path
+}
+
+function __first_audit__(){
+    _path=$1
+    _files=$2
+    _ad_file=$3
+    _rp_file=$4
+
+    for _file in $_files;do
+        _hash=$( md5sum "$_path/$_file")
+        echo $_hash >> $_ad_file
+        echo "ADD $_hash"
+        __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
+    done
+}
+
+function __add__(){
+    _ad_file=$1
+    _list=$2
+    _path=$3
+    _rp_file=$4
+
+    for _file in $_list;do
+        _exist=$( cat $_ad_file | grep $_file )
+
+        if [ ! "$_exist" ];then
+            _hash=$( md5sum "$_path/$_file" )
+            echo $_hash >> $_ad_file
+            echo "ADD $_path/$_file"
+            __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
+        fi
+    done
 }
 
 function main(){
-    _dir=$1
-    _ad_file="$_dir/auditoria.csv"
+    _dir="$1"
+    _ad_file="$_dir/auditoria.txt"
     _rp_file="$_dir/relatório.csv"
-    _date=$( date +"%F %R" )
     _list=$(ls $_dir)
 
-    _file_exists_ $_ad_file
+    __file_exists__ $_ad_file
+    _checked_sum=$( md5sum -c $_ad_file )
 
-    for _line in $_list; do
-        _content=$( cat $_ad_file | grep "$_line" )
-        echo "Linha $_content"
+    if [ ! "$_checked_sum" ];then
+        __first_audit__ $_dir "$_list" $_ad_file $_rp_file
+    else
+        _status=$(echo $_checked_sum | cut -d' ' -f2)
 
-        if [ ! "$_content" ];then
-            _data="$( md5sum "$_dir/$_line") - $_date"
-            echo $_data >> $_ad_file
-            _report_ $_rp_file $_data
-            echo "ADD $_line"
-        else
-            _tmp1="audtkn.tmp"
-            _tmp2="fltkn.tmp"
-            _data=$( echo $_line | md5sum )
-            
-            echo $( cut $_content -d\- -f1 ) > $_tmp1
-            echo $_data > $_tmp2
-
-            if [[ "$( md5sum $_tmp1 )" != "$( md5sum $_tmp2 )" ]];then
-                _new_content="$_data - $date"
-                sed -i "s/$_content/$$_new_content/g" "$_dir/$_line"
-                _report_ $_rp_file $_new_content
-                echo "CHANGED $_line"
-            fi
+        if [ ! "$_status" == "SUCESSO" ] && [ ! "$_status" == "SUCCESS" ];then
+            _file=$( echo $_checked_sum | cut -d: -f1 )
+            _old_hash=$( cat $_ad_file | grep $_file )
+            sed -i "/$_old_hash/d" $_ad_file
+            echo $_hash >> $_ad_file
+            echo "UPDATE $_file"
+            __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
         fi
-    done
 
-    _check_removeds_ "$_dir/$_audit_file" $_list
+        __add__ $_ad_file "$_list" $_dir $_rp_file
+        __check_removeds__ $_ad_file "$_list"
+
+    fi
 }
 
 if [ ! $1 -o $1 == "--help" ]; then
