@@ -22,22 +22,6 @@ function __file_exists__(){
     fi
 }
 
-function __check_removeds__(){
-    _ad_file=$1
-    _list=$2
-    _files=$( cut $_ad_file -d\- -f2 )
-
-    for _file in $( echo $_files | cut -d' ' -f2);do
-        _exist=$( echo $_list | grep $_file)
-
-        if [ $_exist ];then
-            sed -i "/$_files/d" $_ad_file
-            echo "REMOVED $_file"
-        fi
-    done
-
-}
-
 function __report__(){
     _report_path=$1
     _data=$2
@@ -72,7 +56,22 @@ function __add__(){
             _hash=$( md5sum "$_path/$_file" )
             echo $_hash >> $_ad_file
             echo "ADD $_path/$_file"
-            __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
+            __report__ $_rp_file "$_hash - $( date +"%F %R" )"
+        fi
+    done
+}
+
+function __check_removeds__(){
+    _ad_file=$1
+    _list=$2
+    _files=$( cut $_ad_file -d' ' -f2 )
+
+    for _file in $_files;do
+        _exist=$( echo $_list | grep $_file)
+
+        if [ $_exist ];then
+            sed -i "/$_files/d" $_ad_file
+            echo "REMOVED $_file"
         fi
     done
 }
@@ -83,22 +82,24 @@ function main(){
     _rp_file="$_dir/relatório.txt"
     _list=$(ls $_dir)
     __file_exists__ $_ad_file
-    __file_exists__ $_report_path
+    __file_exists__ $_rp_file
     _checked_sum=$( md5sum -c $_ad_file )
 
     if [ ! "$_checked_sum" ];then
         __first_audit__ $_dir $_ad_file $_rp_file "$_list"
     else
-        _status=$(echo $_checked_sum | cut -d' ' -f2)
+        for _sum in $_checked_sum;do
+            _status=$(echo $_sum | cut -d' ' -f2)
 
-        if [ ! "$_status" == "SUCESSO" ] && [ ! "$_status" == "SUCCESS" ];then
-            _file=$( echo $_checked_sum | cut -d: -f1 )
-            _old_hash=$( cat $_ad_file | grep $_file )
-            sed -i "/$_old_hash/d" $_ad_file
-            echo $_hash >> $_ad_file
-            echo "UPDATE $_file"
-            __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
-        fi
+            if [ ! "$_status" == "SUCESSO" ] && [ ! "$_status" == "SUCCESS" ];then
+                _file=$( echo $_sum | cut -d: -f1 )
+                _old_hash=$( cat $_ad_file | grep $_file )
+                _new_hash=$( md5sum $_file )
+                sed "s/$_old_hash/$_new_hash/g" $_ad_file
+                echo "UPDATE $_file"
+                __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
+            fi
+        done
 
         __add__ $_ad_file "$_list" $_dir $_rp_file
         __check_removeds__ $_ad_file "$_list"
