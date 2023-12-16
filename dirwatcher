@@ -39,24 +39,23 @@ function __check_removeds__(){
 }
 
 function __report__(){
-    _path=$1
+    _report_path=$1
     _data=$2
 
-    __file_exists__ $_path
-    echo $_data >> $_path
+    echo $_data >> $_report_path
 }
 
 function __first_audit__(){
     _path=$1
-    _files=$2
-    _ad_file=$3
-    _rp_file=$4
+    _ad_file=$2
+    _rp_file=$3
+    _files=$4
 
     for _file in $_files;do
         _hash=$( md5sum "$_path/$_file")
         echo $_hash >> $_ad_file
         echo "ADD $_hash"
-        __report__ $_rp_file $( echo "$_hash - $( date +"%F %R" )")
+        __report__ $_rp_file "$_hash - $( date +"%F %R" )"
     done
 }
 
@@ -81,14 +80,14 @@ function __add__(){
 function main(){
     _dir="$1"
     _ad_file="$_dir/auditoria.txt"
-    _rp_file="$_dir/relatório.csv"
+    _rp_file="$_dir/relatório.txt"
     _list=$(ls $_dir)
-
     __file_exists__ $_ad_file
+    __file_exists__ $_report_path
     _checked_sum=$( md5sum -c $_ad_file )
 
     if [ ! "$_checked_sum" ];then
-        __first_audit__ $_dir "$_list" $_ad_file $_rp_file
+        __first_audit__ $_dir $_ad_file $_rp_file "$_list"
     else
         _status=$(echo $_checked_sum | cut -d' ' -f2)
 
